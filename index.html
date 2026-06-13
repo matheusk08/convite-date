@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Convite Especial — Luiza</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a1a;
+    font-family: 'Press Start 2P', monospace;
+    overflow: hidden;
+    height: 100vh; width: 100vw;
+  }
+
+  /* ── HUD ── */
+  #hud {
+    position: fixed;
+    top: 12px; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 20px;
+    color: #fff;
+    font-size: 10px;
+    z-index: 50;
+    text-shadow: 2px 2px #000;
+  }
+
+  /* ── HINT ── */
+  #hint {
+    position: fixed;
+    bottom: 70px; left: 50%;
+    transform: translateX(-50%);
+    color: #ffffff88;
+    font-size: 7px;
+    z-index: 50;
+    text-shadow: 1px 1px #000;
+    white-space: nowrap;
+    animation: hintFade 3s forwards 2s;
+  }
+  /* ── MOBILE JOYSTICK ── */
+  #joystick {
+    display: none;
+    position: fixed;
+    bottom: 16px; left: 0; right: 0;
+    z-index: 60;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    pointer-events: none;
+  }
+  #joystick.visible { display: flex; }
+  .joy-group {
+    display: flex;
+    gap: 8px;
+    pointer-events: all;
+  }
+  .joy-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    width: 56px; height: 56px;
+    background: rgba(255,255,255,0.12);
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background .1s;
+    pointer-events: all;
+  }
+  .joy-btn:active, .joy-btn.pressed {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.7);
+  }
+
+  @keyframes hintFade { 0%{opacity:1} 80%{opacity:1} 100%{opacity:0} }
+
+  /* ── GAME AREA ── */
+  #gameArea {
+    position: relative;
+    width: 100%; height: 100vh;
+    overflow: hidden;
+  }
+  #gameArea::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, #1a1a4e 0%, #2d1b69 40%, #0a0a1a 100%);
+  }
+
+  .star {
+    position: absolute;
+    background: #fff;
+    border-radius: 50%;
+    animation: twinkle 2s infinite alternate;
+  }
+  @keyframes twinkle { from{opacity:.3} to{opacity:1} }
+
+  #ground {
+    position: absolute; bottom: 0;
+    width: 100%; height: 60px;
+    background: #1a472a;
+    border-top: 4px solid #2d6a3f;
+    z-index: 2;
+  }
+  #ground::before {
+    content: '';
+    position: absolute;
+    top: -8px; left: 0;
+    width: 100%; height: 8px;
+    background: repeating-linear-gradient(90deg,#3d8b5e 0,#3d8b5e 20px,#2d6a3f 20px,#2d6a3f 40px);
+  }
+
+  .platform {
+    position: absolute;
+    height: 16px;
+    background: #7c4f27;
+    border-top: 4px solid #a0693a;
+    border-bottom: 4px solid #5a3515;
+    z-index: 3;
+  }
+  .platform::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(90deg,transparent 0,transparent 28px,rgba(0,0,0,.15) 28px,rgba(0,0,0,.15) 32px);
+  }
+
+  .coin {
+    position: absolute;
+    width: 20px; height: 20px;
+    background: #ffd700;
+    border-radius: 50%;
+    border: 3px solid #b8860b;
+    z-index: 4;
+    animation: coinBob .6s infinite alternate;
+    box-shadow: 0 0 8px #ffd70088;
+  }
+  .coin::after {
+    content: '★';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    font-size: 8px;
+    color: #b8860b;
+  }
+  @keyframes coinBob { from{transform:translateY(0)} to{transform:translateY(-5px)} }
+
+  #envelope {
+    position: absolute;
+    bottom: 64px; right: 120px;
+    width: 56px; height: 42px;
+    z-index: 4;
+    animation: envFloat 1.2s infinite alternate ease-in-out;
+  }
+  @keyframes envFloat { from{transform:translateY(0)} to{transform:translateY(-6px)} }
+  #envelope svg { width:100%;height:100%;filter:drop-shadow(0 0 12px #ff6eb4cc); }
+
+  /* ── PLAYER ── */
+  #player {
+    position: absolute;
+    bottom: 60px; left: 60px;
+    width: 32px; height: 40px;
+    z-index: 10;
+  }
+  .pixel-char { position:relative; width:32px; height:40px; }
+  .pc-head {
+    position: absolute;
+    top:0; left:6px;
+    width:20px; height:14px;
+    background:#f4c48a;
+    border:2px solid #8a5a2a;
+  }
+  /* ruivo — cabelo longo */
+  .pc-head::before {
+    content:'';
+    position:absolute;
+    top:-6px; left:-4px;
+    width:28px; height:22px;
+    background:#c0392b;
+    border-radius:6px 6px 2px 2px;
+    z-index:-1;
+  }
+  /* eyes */
+  .pc-head::after {
+    content:'';
+    position:absolute;
+    top:5px; left:3px;
+    width:4px; height:3px;
+    background:#222;
+    box-shadow:8px 0 0 #222;
+  }
+  /* cabelo lateral/franja extra */
+  .pc-hair-side {
+    position:absolute;
+    top:6px; left:-6px;
+    width:6px; height:14px;
+    background:#c0392b;
+    border-radius:0 0 3px 3px;
+  }
+  /* body — blusa roxa */
+  .pc-body {
+    position:absolute;
+    top:14px; left:4px;
+    width:24px; height:14px;
+    background:#9b59b6;
+    border:2px solid #6c3483;
+  }
+  /* saia */
+  .pc-skirt {
+    position:absolute;
+    top:26px; left:1px;
+    width:30px; height:10px;
+    background:#9b59b6;
+    border:2px solid #6c3483;
+    border-radius:0 0 4px 4px;
+  }
+  .pc-leg-l {
+    position:absolute;
+    bottom:0; left:5px;
+    width:9px; height:10px;
+    background:#f4c48a;
+    border:2px solid #c9956e;
+    transform-origin:top center;
+  }
+  .pc-leg-r {
+    position:absolute;
+    bottom:0; left:18px;
+    width:9px; height:10px;
+    background:#f4c48a;
+    border:2px solid #c9956e;
+    transform-origin:top center;
+  }
+  .pc-leg-l::after,.pc-leg-r::after {
+    content:'';
+    position:absolute;
+    bottom:-3px; left:-2px;
+    width:13px; height:5px;
+    background:#1a1a1a;
+    border-radius:0 3px 3px 0;
+  }
+  .walking .pc-leg-l { animation:walkL .25s steps(1) infinite; }
+  .walking .pc-leg-r { animation:walkR .25s steps(1) infinite; }
+  @keyframes walkL { 0%,100%{transform:rotate(-15deg)} 50%{transform:rotate(15deg)} }
+  @keyframes walkR { 0%,100%{transform:rotate(15deg)} 50%{transform:rotate(-15deg)} }
+  .jumping .pc-body { transform:scaleY(1.15); }
+  .jumping .pc-head { top:-2px; }
+
+  /* ── SCREENS ── */
+  .screen {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.88);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+  .screen.active { display:flex; }
+
+  /* INTRO SCREEN */
+  #introScreen { background:radial-gradient(ellipse at center,#1a1a4e 0%,#050510 100%); z-index:150; }
+  .intro-box {
+    background:#0d0d2b;
+    border:3px solid #ffd700;
+    box-shadow:0 0 30px #ffd70044,inset 0 0 20px #0a0a1a;
+    padding:36px 40px;
+    max-width:600px; width:90%;
+    text-align:center;
+    animation:boxIn .5s ease-out;
+  }
+  .intro-title {
+    font-size:14px; color:#ffd700;
+    text-shadow:0 0 12px #ffd700;
+    margin-bottom:24px; line-height:1.8;
+  }
+  .intro-obj {
+    font-size:8px; color:#e0d0ff;
+    line-height:2.6; margin-bottom:10px;
+  }
+  .intro-keys {
+    font-size:7px; color:#a78bfa;
+    line-height:2.4; margin-bottom:24px;
+    border:1px solid #a78bfa33;
+    padding:10px 14px;
+    display:inline-block;
+  }
+  .intro-joke {
+    font-size:7px; color:#ffffff55;
+    line-height:2; margin-bottom:28px;
+    font-style:italic;
+  }
+  .btn-start {
+    font-family:'Press Start 2P',monospace;
+    font-size:11px; padding:14px 32px;
+    background:#ffd700; color:#000;
+    border:3px solid #b8860b; cursor:pointer;
+    box-shadow:4px 4px 0 #7a5c00;
+    transition:transform .1s,box-shadow .1s;
+  }
+  .btn-start:hover { transform:translate(-2px,-2px);box-shadow:6px 6px 0 #7a5c00; }
+  .btn-start:active { transform:translate(2px,2px);box-shadow:2px 2px 0 #7a5c00; }
+
+  @keyframes boxIn { from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
+
+  /* INVITE */
+  #inviteScreen { background:radial-gradient(ellipse at center,#1a0a2e 0%,#050510 100%); }
+  .invite-box {
+    background:#0d0d2b;
+    border:3px solid #ff6eb4;
+    box-shadow:0 0 30px #ff6eb466,inset 0 0 20px #1a0a2e;
+    padding:32px 36px;
+    max-width:600px; width:90%;
+    text-align:center;
+    animation:boxIn .4s ease-out;
+  }
+  .invite-badge {
+    font-size:7px;
+    color:#ffd700;
+    text-shadow:0 0 8px #ffd700;
+    margin-bottom:10px;
+    letter-spacing:1px;
+    border:1px solid #ffd70066;
+    display:inline-block;
+    padding:4px 10px;
+  }
+  .invite-title {
+    font-size:13px;
+    color:#ff6eb4;
+    text-shadow:0 0 10px #ff6eb4;
+    margin-bottom:20px;
+    line-height:1.8;
+    letter-spacing:1px;
+  }
+  .invite-text {
+    font-size:9px;
+    color:#e0d0ff;
+    line-height:2.2;
+    margin-bottom:28px;
+  }
+  .btn-row {
+    display:flex; gap:24px;
+    justify-content:center; flex-wrap:wrap;
+  }
+  .btn-yes {
+    font-family:'Press Start 2P',monospace;
+    font-size:12px; padding:14px 28px;
+    background:#27ae60; color:#fff;
+    border:3px solid #1e8449; cursor:pointer;
+    box-shadow:4px 4px 0 #145a32;
+    transition:transform .1s,box-shadow .1s;
+  }
+  .btn-yes:hover { transform:translate(-2px,-2px);box-shadow:6px 6px 0 #145a32; }
+  .btn-yes:active { transform:translate(2px,2px);box-shadow:2px 2px 0 #145a32; }
+  .btn-no {
+    font-family:'Press Start 2P',monospace;
+    font-size:12px; padding:14px 28px;
+    background:#c0392b; color:#fff;
+    border:3px solid #922b21; cursor:pointer;
+    box-shadow:4px 4px 0 #641e16;
+    position:fixed; transition:none; z-index:200;
+  }
+
+  /* VIBE SCREEN */
+  #vibeScreen { background:radial-gradient(ellipse at center,#0a0a2e 0%,#050510 100%); }
+  .vibe-box {
+    background:#0d0d2b;
+    border:3px solid #a78bfa;
+    box-shadow:0 0 30px #a78bfa44;
+    padding:32px 36px;
+    max-width:620px; width:90%;
+    text-align:center;
+    animation:boxIn .4s ease-out;
+  }
+  .vibe-title {
+    font-size:10px;
+    color:#a78bfa;
+    text-shadow:0 0 10px #a78bfa;
+    margin-bottom:8px;
+    line-height:1.8;
+  }
+  .vibe-sub {
+    font-size:7px;
+    color:#c4b5fd88;
+    margin-bottom:28px;
+    line-height:2;
+  }
+  .vibe-option {
+    font-family:'Press Start 2P',monospace;
+    display:block; width:100%;
+    padding:18px 16px; margin-bottom:14px;
+    cursor:pointer;
+    text-align:left;
+    font-size:8px; line-height:2;
+    transition:all .15s;
+  }
+  .vibe-option.casual {
+    background:#1a1200;
+    border:2px solid #ffd700;
+    color:#ffd700;
+  }
+  .vibe-option.casual:hover {
+    background:#2a2000;
+    box-shadow:0 0 14px #ffd70055;
+    color:#fff;
+  }
+  .vibe-option.casual.selected {
+    background:#2a2000;
+    border:3px solid #ffd700;
+    box-shadow:0 0 18px #ffd70088;
+    color:#fff;
+  }
+  .vibe-option.casual.selected::before { content:'✔ '; color:#ffd700; }
+  .vibe-option.fancy {
+    background:#0d1a2e;
+    border:2px solid #60a5fa;
+    color:#60a5fa;
+  }
+  .vibe-option.fancy:hover {
+    background:#152540;
+    box-shadow:0 0 14px #60a5fa55;
+    color:#fff;
+  }
+  .vibe-option.fancy.selected {
+    background:#152540;
+    border:3px solid #60a5fa;
+    box-shadow:0 0 18px #60a5fa88;
+    color:#fff;
+  }
+  .vibe-option.fancy.selected::before { content:'✔ '; color:#60a5fa; }
+  .btn-vibe-confirm {
+    font-family:'Press Start 2P',monospace;
+    font-size:11px; padding:14px 32px;
+    background:#1a4d1a; color:#ffffff44;
+    border:3px solid #27ae6044; cursor:not-allowed;
+    box-shadow:none; margin-top:8px;
+    transition:all .2s; width:100%;
+  }
+  .btn-vibe-confirm.ready {
+    background:#27ae60; color:#fff;
+    border:3px solid #1e8449; cursor:pointer;
+    box-shadow:4px 4px 0 #145a32;
+  }
+  .btn-vibe-confirm.ready:hover { transform:translate(-2px,-2px);box-shadow:6px 6px 0 #145a32; }
+  .btn-vibe-confirm.ready:active { transform:translate(2px,2px);box-shadow:2px 2px 0 #145a32; }
+  .vibe-emoji { font-size:16px; margin-right:6px; }
+  .vibe-mystery {
+    font-size:6px;
+    color:#ffffff44;
+    margin-top:6px;
+    display:block;
+  }
+
+  /* SCHEDULE */
+  #scheduleScreen { background:radial-gradient(ellipse at center,#0a1a0a 0%,#050a05 100%); }
+  .schedule-box {
+    background:#0a1a0a;
+    border:3px solid #27ae60;
+    box-shadow:0 0 30px #27ae6066;
+    padding:32px 36px;
+    max-width:560px; width:90%;
+    text-align:center;
+    animation:boxIn .4s ease-out;
+  }
+  .schedule-title {
+    font-size:10px;
+    color:#2ecc71;
+    text-shadow:0 0 8px #2ecc71;
+    margin-bottom:8px; line-height:1.8;
+  }
+  .schedule-sub {
+    font-size:6px; color:#2ecc7188;
+    margin-bottom:22px; line-height:2;
+  }
+  .day-option {
+    font-family:'Press Start 2P',monospace;
+    font-size:8px; display:block; width:100%;
+    padding:14px 16px; margin-bottom:12px;
+    background:#0d2b0d; border:2px solid #27ae60;
+    color:#a8ffb0; cursor:pointer;
+    text-align:left; transition:all .15s; line-height:1.6;
+  }
+  .day-option:hover { background:#1a4d1a;box-shadow:0 0 12px #27ae6066;color:#fff; }
+  .day-option.preferred { border-color:#ffd700;color:#ffd700;background:#1a1a00; }
+  .day-option.preferred:hover { background:#2a2a00;box-shadow:0 0 12px #ffd70066; }
+  .preferred-badge {
+    display:inline-block; background:#ffd700; color:#000;
+    font-size:6px; padding:2px 6px; margin-left:8px; vertical-align:middle;
+  }
+
+  /* CONFIRMED */
+  #confirmedScreen { background:radial-gradient(ellipse at center,#0a1a0a 0%,#050a05 100%); }
+  .confirmed-box {
+    background:#0a1a0a;
+    border:3px solid #ffd700;
+    box-shadow:0 0 40px #ffd70066;
+    padding:32px 36px;
+    max-width:560px; width:90%;
+    text-align:center;
+    animation:boxIn .4s ease-out;
+  }
+  .confirmed-title {
+    font-size:15px; color:#ffd700;
+    text-shadow:0 0 16px #ffd700;
+    margin-bottom:16px; line-height:1.8;
+  }
+  .hearts { font-size:22px; margin:14px 0; animation:heartPulse .8s infinite alternate; }
+  @keyframes heartPulse { from{transform:scale(1)} to{transform:scale(1.2)} }
+  .confirmed-day {
+    font-size:9px; color:#2ecc71;
+    margin-bottom:16px; line-height:2;
+  }
+  .confirmed-msg {
+    font-size:9px; color:#fff;
+    line-height:2.6; margin-top:16px;
+    border-top:1px solid #ffffff33;
+    padding-top:16px;
+    text-shadow: 0 0 8px #ffffff55;
+  }
+
+  /* UTILS */
+  .particle {
+    position:fixed; width:8px; height:8px;
+    pointer-events:none; z-index:300;
+    animation:particleFly 1s forwards;
+  }
+  @keyframes particleFly { 0%{opacity:1;transform:translate(0,0) scale(1)} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0)} }
+
+  .score-pop {
+    position:fixed;
+    font-family:'Press Start 2P',monospace;
+    font-size:14px; color:#ffd700;
+    text-shadow:2px 2px #000;
+    pointer-events:none; z-index:200;
+    animation:scoreRise 1s forwards;
+  }
+  @keyframes scoreRise { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-60px)} }
+
+  #levelBanner {
+    display:none;
+    position:fixed; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    font-family:'Press Start 2P',monospace;
+    font-size:20px; color:#ffd700;
+    text-shadow:3px 3px #000,0 0 20px #ffd700;
+    z-index:90; white-space:nowrap;
+  }
+  #levelBanner.show {
+    display:block;
+    animation:levelAnim 2s forwards;
+  }
+  @keyframes levelAnim {
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}
+    20%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}
+    70%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(1)}
+  }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <span>JOGADORA: LUIZA</span>
+  <span id="scoreDisplay">PONTOS: 000</span>
+  <span>VIDAS: ♥ ♥ ♥</span>
+</div>
+
+<div id="hint">← → / A D para mover &nbsp;|&nbsp; ↑ / W para pular</div>
+
+<!-- MOBILE JOYSTICK -->
+<div id="joystick">
+  <div class="joy-group">
+    <button class="joy-btn" id="joyLeft">◀</button>
+    <button class="joy-btn" id="joyRight">▶</button>
+  </div>
+  <div class="joy-group">
+    <button class="joy-btn" id="joyJump">▲</button>
+  </div>
+</div>
+
+<div id="gameArea">
+  <div id="ground"></div>
+
+  <div class="platform" style="bottom:120px;left:200px;width:100px;"></div>
+  <div class="platform" style="bottom:180px;left:380px;width:120px;"></div>
+  <div class="platform" style="bottom:140px;left:580px;width:90px;"></div>
+
+  <div class="coin" id="c1" style="bottom:138px;left:230px;"></div>
+  <div class="coin" id="c2" style="bottom:198px;left:420px;"></div>
+  <div class="coin" id="c3" style="bottom:158px;left:610px;"></div>
+
+  <div id="envelope">
+    <svg viewBox="0 0 56 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="8" width="54" height="34" rx="2" fill="#ff6eb4" stroke="#d63384" stroke-width="2"/>
+      <path d="M1 8 L28 26 L55 8 Z" fill="#ff91cc" stroke="#d63384" stroke-width="2"/>
+      <line x1="1" y1="42" x2="28" y2="24" stroke="#d63384" stroke-width="1.5"/>
+      <line x1="55" y1="42" x2="28" y2="24" stroke="#d63384" stroke-width="1.5"/>
+      <text x="28" y="34" text-anchor="middle" font-size="14" fill="#fff">♥</text>
+      <text x="4" y="6" font-size="8" fill="#ffd700">✦</text>
+      <text x="46" y="5" font-size="6" fill="#ffd700">✦</text>
+    </svg>
+  </div>
+
+  <div id="player">
+    <div class="pixel-char" id="pixelChar">
+      <div class="pc-head"></div>
+      <div class="pc-hair-side"></div>
+      <div class="pc-body"></div>
+      <div class="pc-skirt"></div>
+      <div class="pc-leg-l"></div>
+      <div class="pc-leg-r"></div>
+    </div>
+  </div>
+</div>
+
+<!-- INTRO SCREEN -->
+<div id="introScreen" class="screen active">
+  <div class="intro-box">
+    <div class="intro-title">⚡ MISSÃO DESBLOQUEADA ⚡</div>
+    <div class="intro-obj">
+      OBJETIVO: chegar até o envelope cor-de-rosa<br>
+      no lado direito da fase.
+    </div>
+    <div class="intro-keys">
+      ← → &nbsp;ou&nbsp; A D &nbsp;→&nbsp; mover<br>
+      ↑ &nbsp;ou&nbsp; W &nbsp;ou&nbsp; ESPAÇO &nbsp;→&nbsp; pular
+    </div>
+    <div class="intro-joke">
+      // jogo facinho para quem aprendeu<br>
+      // machine learning no segundo semestre.<br>
+      // boa sorte, engenheira.
+    </div>
+    <button class="btn-start" onclick="startGame()">▶ INICIAR</button>
+  </div>
+</div>
+
+<div id="levelBanner">✦ CONVITE DESBLOQUEADO! ✦</div>
+
+<!-- INVITE -->
+<div id="inviteScreen" class="screen">
+  <div class="invite-box">
+    <div class="invite-badge">[ PARA: FUTURA ESPECIALISTA DE DEVOPS ]</div>
+    <div class="invite-title" style="margin-top:14px;">✉ CONVITE DESBLOQUEADO ✉</div>
+    <div class="invite-text">
+      Atenção, Jogadora Luiza.<br><br>
+      O Jogador Matheus gostaria<br>
+      de convidá-la para sair<br>
+      algum dia antes do caos de<br>
+      final de mês e início do próximo.<br><br>
+      Aceita a missão?
+    </div>
+    <div class="btn-row">
+      <button class="btn-yes" onclick="acceptInvite()">[ S ] SIM</button>
+      <button class="btn-no" id="btnNo" onclick="refuseAttempt()">[ N ] NÃO</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIBE SELECT -->
+<div id="vibeScreen" class="screen">
+  <div class="vibe-box">
+    <div class="vibe-title">⚙ CONFIGURAÇÃO DE MISSÃO</div>
+    <div class="vibe-sub">
+      selecione o parâmetro de ambiente desejado<br>
+      // escolha com sabedoria, senhorita
+    </div>
+    <button class="vibe-option casual" id="vibeCasual" onclick="chooseVibe('casual')">
+      <span class="vibe-emoji">🎮</span> MODO CASUAL<br>
+      <span style="font-size:7px;color:#ffd70099;">► algo no estilo do sábado passado...<br>
+      <span class="vibe-mystery">[ dados classificados — acesso restrito ]</span></span>
+    </button>
+    <button class="vibe-option fancy" id="vibeFancy" onclick="chooseVibe('fancy')">
+      <span class="vibe-emoji">🍷</span> MODO JANTINHA<br>
+      <span style="font-size:7px;color:#60a5fa99;">► algo no estilo da sexta passada...<br>
+      <span class="vibe-mystery">[ localização: desconhecida — surpresa.exe ]</span></span>
+    </button>
+    <button class="btn-vibe-confirm" id="btnVibeConfirm" onclick="confirmVibe()" disabled>
+      ▶ CONFIRMAR SELEÇÃO
+    </button>
+  </div>
+</div>
+
+<!-- SCHEDULE -->
+<div id="scheduleScreen" class="screen">
+  <div class="schedule-box">
+    <div class="schedule-title">📅 SELECIONE O DIA DA MISSÃO</div>
+    <div class="schedule-sub" id="scheduleSub">escolha o dia que melhor encaixa na sua build</div>
+    <button class="day-option" onclick="confirmDay('Sexta-feira, 19/06 à noite')">
+      ▶ SEXTA-FEIRA — 19/06<br>&nbsp;&nbsp;&nbsp;à noite
+    </button>
+    <button class="day-option preferred" onclick="confirmDay('Sábado, 20/06 à noite')">
+      ▶ SÁBADO — 20/06<span class="preferred-badge">★ FAVORITO</span><br>&nbsp;&nbsp;&nbsp;à noite
+    </button>
+  </div>
+</div>
+
+<!-- CONFIRMED -->
+<div id="confirmedScreen" class="screen">
+  <div class="confirmed-box">
+    <div class="confirmed-title">MISSÃO<br>CONFIRMADA!</div>
+    <div class="hearts">♥ ♥ ♥</div>
+    <div class="confirmed-day" id="confirmedDay"></div>
+    <div class="confirmed-msg">
+      Obrigado pelas respostas, senhorita.<br><br>
+      E se tiver ok por ti...<br>
+      o lugar vai ser surpresa<br>
+      e passo te pegar aí<br>
+      para irmos juntos. ♥
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STARS ──
+(function(){
+  const area = document.getElementById('gameArea');
+  for(let i=0;i<60;i++){
+    const s = document.createElement('div');
+    s.className = 'star';
+    const sz = Math.random()*2+1;
+    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*70}%;left:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${1+Math.random()*2}s`;
+    area.appendChild(s);
+  }
+})();
+
+// ── STATE ──
+const player    = document.getElementById('player');
+const pixelChar = document.getElementById('pixelChar');
+const envelope  = document.getElementById('envelope');
+const scoreDisplay = document.getElementById('scoreDisplay');
+
+let posX = 60, posY = 0, velY = 0;
+let score = 0;
+let gameRunning = true;
+let reached = false;
+
+// input
+const keys = {};
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  // prevent page scroll on arrows/space
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+});
+document.addEventListener('keyup',  e => { keys[e.code] = false; });
+
+const GRAVITY    = 0.55;
+const JUMP_FORCE = -13;
+const SPEED      = 3.0;
+const GROUND     = 0;
+
+const platforms = [
+  {x:200,y:120,w:100},{x:380,y:180,w:120},{x:580,y:140,w:90},
+];
+const coins = [
+  {x:230,y:138,id:'c1',collected:false},
+  {x:420,y:198,id:'c2',collected:false},
+  {x:610,y:158,id:'c3',collected:false},
+];
+
+let onGround = true;
+
+function getGroundAt(x) {
+  for(const p of platforms) {
+    if(x+28 > p.x && x < p.x+p.w) return p.y;
+  }
+  return GROUND;
+}
+
+function doJump() {
+  if(onGround) {
+    velY = JUMP_FORCE;
+    onGround = false;
+    pixelChar.classList.add('jumping');
+    setTimeout(()=> pixelChar.classList.remove('jumping'), 400);
+  }
+}
+
+function collectCoin(coin) {
+  if(coin.collected) return;
+  coin.collected = true;
+  const el = document.getElementById(coin.id);
+  if(el) el.style.display = 'none';
+  score += 100;
+  scoreDisplay.textContent = 'PONTOS: ' + String(score).padStart(3,'0');
+  const pop = document.createElement('div');
+  pop.className = 'score-pop';
+  pop.textContent = '+100';
+  pop.style.left = (posX+20)+'px';
+  pop.style.bottom = (60+posY+50)+'px';
+  document.body.appendChild(pop);
+  setTimeout(()=> pop.remove(), 1000);
+}
+
+function spawnParticles(x,y,color='#ffd700'){
+  for(let i=0;i<12;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.background = color;
+    p.style.left = x+'px'; p.style.top = y+'px';
+    const angle = (Math.PI*2/12)*i;
+    const dist = 40+Math.random()*40;
+    p.style.setProperty('--dx', Math.cos(angle)*dist+'px');
+    p.style.setProperty('--dy', Math.sin(angle)*dist+'px');
+    document.body.appendChild(p);
+    setTimeout(()=> p.remove(), 1000);
+  }
+}
+
+// ── GAME LOOP ──
+function gameLoop(){
+  if(!gameRunning) return;
+
+  // ── INPUT ──
+  const movingRight = keys['ArrowRight'] || keys['KeyD'];
+  const movingLeft  = keys['ArrowLeft']  || keys['KeyA'];
+  const wantJump    = keys['ArrowUp']    || keys['KeyW'] || keys['Space'];
+
+  if(movingRight) posX += SPEED;
+  if(movingLeft)  posX = Math.max(0, posX - SPEED);
+  if(wantJump)    doJump();
+
+  // walking animation
+  if(movingRight || movingLeft) pixelChar.classList.add('walking');
+  else pixelChar.classList.remove('walking');
+
+  // ── PHYSICS ──
+  velY += GRAVITY;
+  posY -= velY;
+
+  const groundY = getGroundAt(posX);
+  if(posY <= groundY) {
+    posY = groundY;
+    velY = 0;
+    onGround = true;
+  } else {
+    onGround = false;
+  }
+  if(posY < GROUND) { posY = GROUND; velY = 0; onGround = true; }
+
+  // ── COINS ──
+  for(const coin of coins){
+    if(!coin.collected){
+      if(Math.abs(posX - coin.x) < 28 && Math.abs((posY+40) - coin.y) < 28)
+        collectCoin(coin);
+    }
+  }
+
+  // ── CHECK REACH ──
+  const envRect = envelope.getBoundingClientRect();
+  const envX = envRect.left - 40;
+
+  if(!reached && posX >= envX - 10){
+    reached = true;
+    gameRunning = false;
+    pixelChar.classList.remove('walking');
+    envelope.style.filter = 'drop-shadow(0 0 20px #fff) drop-shadow(0 0 30px #ff6eb4)';
+    spawnParticles(envRect.left, envRect.top, '#ff6eb4');
+    setTimeout(()=>{
+      const banner = document.getElementById('levelBanner');
+      banner.classList.add('show');
+      setTimeout(()=>{ banner.classList.remove('show'); showInvite(); }, 2000);
+    }, 400);
+  }
+
+  player.style.left   = posX + 'px';
+  player.style.bottom = (60 + posY) + 'px';
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ── SCREENS ──
+function showInvite(){
+  document.getElementById('inviteScreen').classList.add('active');
+  positionNoBtn();
+}
+
+// No button escape
+let noAttempts = 0;
+function positionNoBtn(){
+  const btn = document.getElementById('btnNo');
+  const vw = window.innerWidth - 140;
+  const vh = window.innerHeight - 80;
+  btn.style.left = (80 + Math.random()*(vw-80)) + 'px';
+  btn.style.top  = (80 + Math.random()*(vh-80)) + 'px';
+}
+document.getElementById('btnNo').addEventListener('mouseenter', function(){
+  noAttempts++;
+  positionNoBtn();
+  if(noAttempts >= 3) this.textContent = '[ N ] FOGE...';
+  if(noAttempts >= 6) { this.style.opacity='0.2'; this.textContent='[ N ] ???'; }
+});
+function refuseAttempt(){ positionNoBtn(); }
+
+function acceptInvite(){
+  document.getElementById('inviteScreen').classList.remove('active');
+  document.getElementById('vibeScreen').classList.add('active');
+  spawnParticles(window.innerWidth/2, window.innerHeight/2, '#a78bfa');
+}
+
+let selectedVibe = null;
+
+function chooseVibe(type) {
+  selectedVibe = type;
+  document.getElementById('vibeCasual').classList.remove('selected');
+  document.getElementById('vibeFancy').classList.remove('selected');
+  document.getElementById('vibe' + (type === 'casual' ? 'Casual' : 'Fancy')).classList.add('selected');
+  const btn = document.getElementById('btnVibeConfirm');
+  btn.classList.add('ready');
+  btn.disabled = false;
+}
+
+function confirmVibe() {
+  if(!selectedVibe) return;
+  selectVibe(selectedVibe);
+}
+
+function selectVibe(type){
+  document.getElementById('vibeScreen').classList.remove('active');
+  document.getElementById('scheduleScreen').classList.add('active');
+  const sub = document.getElementById('scheduleSub');
+  if(type === 'casual') sub.textContent = 'modo casual selecionado — boa escolha';
+  else sub.textContent = 'modo jantinha selecionado — classe ativada';
+  spawnParticles(window.innerWidth/2, window.innerHeight/2, type==='casual'?'#ffd700':'#60a5fa');
+}
+
+function sendEmail(vibe, day) {
+  const formData = new FormData();
+  formData.append('_subject', '💌 Luiza respondeu o convite!');
+  formData.append('Vibe escolhida', vibe === 'casual' ? '🎮 Modo Casual (estilo sábado passado)' : '🍷 Modo Jantinha (estilo sexta passada)');
+  formData.append('Dia escolhido', day);
+  formData.append('_captcha', 'false');
+  formData.append('_template', 'table');
+  fetch('https://formsubmit.co/ajax/matheusckleinpaul@gmail.com', {
+    method: 'POST',
+    body: formData
+  }).catch(()=>{}); // silencioso, não afeta a experiência dela
+}
+
+function confirmDay(day){
+  sendEmail(selectedVibe, day);
+  document.getElementById('scheduleScreen').classList.remove('active');
+  document.getElementById('confirmedDay').textContent = '▶ ' + day;
+  document.getElementById('confirmedScreen').classList.add('active');
+  spawnParticles(window.innerWidth/2, window.innerHeight/2, '#ffd700');
+  setTimeout(()=> spawnParticles(window.innerWidth/3,  window.innerHeight/3,  '#ff6eb4'), 300);
+  setTimeout(()=> spawnParticles(window.innerWidth*2/3, window.innerHeight*2/3, '#27ae60'), 600);
+}
+
+// ── MOBILE DETECTION & JOYSTICK ──
+const isMobile = /Mobi|Android|iPhone|iPad|iPod|Touch/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+if(isMobile) {
+  document.getElementById('joystick').classList.add('visible');
+  document.getElementById('hint').style.display = 'none';
+
+  // zoom out so the level feels wider on small screens
+  const gameArea = document.getElementById('gameArea');
+  const scale = 0.62;
+  gameArea.style.transformOrigin = 'top left';
+  gameArea.style.transform = `scale(${scale})`;
+  gameArea.style.width = (100 / scale) + 'vw';
+  gameArea.style.height = (100 / scale) + 'vh';
+
+  function holdBtn(id, keyCode) {
+    const btn = document.getElementById(id);
+    const start = () => { keys[keyCode] = true;  btn.classList.add('pressed'); };
+    const end   = () => { keys[keyCode] = false; btn.classList.remove('pressed'); };
+    btn.addEventListener('touchstart',  e => { e.preventDefault(); start(); }, { passive: false });
+    btn.addEventListener('touchend',    e => { e.preventDefault(); end();   }, { passive: false });
+    btn.addEventListener('touchcancel', e => { e.preventDefault(); end();   }, { passive: false });
+    btn.addEventListener('mousedown',  start);
+    btn.addEventListener('mouseup',    end);
+    btn.addEventListener('mouseleave', end);
+  }
+
+  holdBtn('joyLeft',  'ArrowLeft');
+  holdBtn('joyRight', 'ArrowRight');
+  holdBtn('joyJump',  'ArrowUp');
+}
+
+// ── START ──
+function startGame(){
+  document.getElementById('introScreen').classList.remove('active');
+  setTimeout(gameLoop, 300);
+}
+</script>
+</body>
+</html>
